@@ -1,0 +1,5 @@
+{:main juliaworld.main
+ :foreign-libs [{:file "js/pixi.js"
+                 :provides ["pixi"]}]
+ :optimizations :none
+}

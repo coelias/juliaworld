@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="http://app.klipse.tech/css/codemirror.css">
+    <script src="data/scenes.js" type="text/javascript"></script>
+	<script>
+        function evaluateCode() {
+            const editorElement = document.getElementById('editor');
+            const code = editorElement.value;
+            klipse.run_once(code, 'clojure');
+        }
+        function evaluateCode() {
+        	// Create a new keyboard event
+        	const event = new KeyboardEvent('keydown', {
+                key: 'Enter',
+                code: 'Enter',
+                keyCode: 13,
+                which: 13,
+                bubbles: true,
+                cancelable: true,
+                ctrlKey: true,
+                metaKey: false });
+        
+            klipse_editors[0].focus()
+		    focusedElement = document.activeElement;
+            
+            if (focusedElement) {
+            	focusedElement.dispatchEvent(event);
+            }
+        }
+    </script>
+	<style>
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #mypixi {
+        flex: 0 0 75vh; /* 75% of the viewport height */
+        background-color: #f0f0f0; /* Add background color for visibility */
+      }
+
+      #app, #editor, button {
+        flex: 1; /* Share remaining 25% space */
+      }
+
+      #editor {
+        width: 100%;
+        height: auto;
+        box-sizing: border-box;
+      }
+
+      button {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+    </div>
+	<div id="mypixi"></div>
+	<textarea class="language-klipse" id="editor" data-preamble="
+
+(ns juliaworld.hero)
+(declare forward)
+(declare turn-left)
+(declare turn-right)
+
+(ns juliaworld.m$macros
+  (:require [cljs.core.async :refer [go <! >! chan]]
+            [cljs.pprint :refer [pprint]])
+  (:refer-clojure :exclude [map]))
+
+(def ^:dynamic *debug* false)
+
+(defn extract-defn-names
+  [& body]
+  (let [fns (atom [])]
+    (doseq [form body]
+      (when (and (seq? form)
+                 (= 'defn (first form)))
+        (swap! fns conj (second form))))
+    @fns))
+
+(defn form->await-form [f]
+  `(~'fn [& ~'more] (~'go (~'<! (~'apply ~f ~'more)))))
+
+(defn fix-form-symbols [fnames form]
+  (cond
+    (seq? form) (let [[f & r] form
+                       r (clojure.core/map (partial fix-form-symbols fnames) r)]
+                   (if (fnames f)
+                     `(~'<! ~(cons f r))
+                     (cons (fix-form-symbols fnames f) r)))
+    (vector? form) (mapv (partial fix-form-symbols fnames) form)
+    (map? form) (into {} (clojure.core/map (fn [[v1 v2]] [(fix-form-symbols fnames v1)
+                                            (fix-form-symbols fnames v2)]) form))
+    (fnames form) (form->await-form form)
+    :else form))
+
+(defn update-bodies [fnames forms]
+  (fix-form-symbols fnames
+                    (let [update-fn (fn [[pars & rest]]
+                                      `(~pars (let [~'_ch (chan)] ~(reduce #(conj %1 %2) '()  (reverse `(~'go (~'>! ~'_ch ~(cons 'do rest)) ))) ~'_ch))
+                                      )]
+                      (clojure.core/map update-fn forms))))
+
+(defn update-defn [fnames form]
+  (let [clean-form (filter #(not (string? %)) (rest form))
+        [name & body] clean-form]
+    (into (if (vector? (first body))
+            (update-bodies fnames [body])
+            (update-bodies fnames body)) `(~name defn))))
+
+(defn myprn [x]
+  (when *debug*
+    (pprint x) )
+  x)
+
+(def myfns
+  '(
+    (defn forward [] (<! (juliaworld.hero/forward)))
+    (defn turn-right [] (<! (juliaworld.hero/turn-right)))
+    (defn turn-left [] (<! (juliaworld.hero/turn-left)))
+
+    (defn map
+	  ([f vals]
+	  (let [r (atom (list))]
+        (doseq [v vals]
+           (let [res (f v)]
+             (swap! r concat (list (if (= (type res) cljs.core.async.impl.channels/ManyToManyChannel)
+               (<! res)
+               res)))))
+	    @r)))
+	))
+
+(defmacro code [& forms]
+  (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
+        fnames (set (apply extract-defn-names fns))
+        non-fns (filter #(not= 'defn (first %)) forms)
+        updated-fns (mapv (partial update-defn fnames) fns)]
+    (myprn `(do ~(cons 'go
+          (into
+           updated-fns
+           (clojure.core/map (partial fix-form-symbols fnames) 
+		    (list `(let [~'r ~(cons 'do non-fns)]
+			 (println 
+(if (= (type ~'r) cljs.core.async.impl.channels/ManyToManyChannel)
+               (<! ~'r)
+               ~'r))
+			 )))))
+	     nil)
+	)))
+
+	">
+	(juliaworld.m/code
+	;; vvv - Write here your code - vvv
+
+
+	)
+	</textarea>
+	<button onclick="evaluateCode()">Run</button>
+    <script src="cljs-out/dev-main.js" type="text/javascript"></script>
+    <script src="cljs-out/dev/juliaworld/mcs.js" type="text/javascript"></script>
+  </body>
+</html>
