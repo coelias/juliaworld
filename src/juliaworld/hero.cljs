@@ -63,7 +63,7 @@
           (>! _ch :turn-left)) 500))
     _ch))
 
-(defn move-hero-forward [current]
+(defn get-forward-coords [current]
   (let [[x y] (st/get-state [:hero :pos])
         [nx ny] (case current
                   :idle-up [x (dec y)]
@@ -108,7 +108,7 @@
                :idle-left :run-left
                :idle-up :run-up
                :idle-right :run-right)
-        [nx ny] (move-hero-forward current)
+        [nx ny] (get-forward-coords current)
         collision (some identity (map :collision (st/xy-props nx ny)))
         f1 (chan)]
     (go
@@ -117,7 +117,7 @@
         (st/set-state [:hero :current] next)
         (show-hero)
         (st/start-animation next)
-        (<! (move-hero (move-hero-forward current) next 0.5))
+        (<! (move-hero [nx ny] next 0.5))
         (st/stop-animation next)
         (remove-hero)
         (st/set-state [:hero :pos] [nx ny])
@@ -127,3 +127,11 @@
        #(go
           (>! f1 :forward)) 100))
     f1))
+
+(defn check []
+  (let [current (st/get-state [:hero :current])
+        [nx ny] (get-forward-coords current)]
+    (->> (st/xy-props nx ny)
+         (map :type)
+         (filter some?)
+         last)))

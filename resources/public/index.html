@@ -69,7 +69,9 @@
 (declare forward)
 (declare turn-left)
 (declare turn-right)
-
+(declare check)
+(ns juliaworld.scene)
+(declare load-scene)
 (ns juliaworld.m$macros
   (:require [cljs.core.async :refer [go <! >! chan]]
             [cljs.pprint :refer [pprint]])
@@ -92,21 +94,23 @@
 (defn fix-form-symbols [fnames form]
   (cond
     (seq? form) (let [[f & r] form
-                       r (clojure.core/map (partial fix-form-symbols fnames) r)]
-                   (if (fnames f)
-                     `(~'<! ~(cons f r))
-                     (cons (fix-form-symbols fnames f) r)))
+                      r (clojure.core/map (partial fix-form-symbols fnames) r)]
+                  (if (fnames f)
+                    `(~'<! ~(cons f r))
+                    (cons (fix-form-symbols fnames f) r)))
     (vector? form) (mapv (partial fix-form-symbols fnames) form)
     (map? form) (into {} (clojure.core/map (fn [[v1 v2]] [(fix-form-symbols fnames v1)
-                                            (fix-form-symbols fnames v2)]) form))
+                                                         (fix-form-symbols fnames v2)]) form))
     (fnames form) (form->await-form form)
     :else form))
 
 (defn update-bodies [fnames forms]
   (fix-form-symbols fnames
                     (let [update-fn (fn [[pars & rest]]
-                                      `(~pars (let [~'_ch (chan)] ~(reduce #(conj %1 %2) '()  (reverse `(~'go (~'>! ~'_ch ~(cons 'do rest)) ))) ~'_ch))
-                                      )]
+                                      `(~pars (let [~'_ch (chan)]
+                                                ~(reduce #(conj %1 %2)
+                                                         '()
+                                                         (reverse `(~'go (~'>! ~'_ch ~(cons 'do rest)) ))) ~'_ch)))]
                       (clojure.core/map update-fn forms))))
 
 (defn update-defn [fnames form]
@@ -118,43 +122,42 @@
 
 (defn myprn [x]
   (when *debug*
-    (pprint x) )
+    (pprint x))
   x)
 
 (def myfns
-  '(
-    (defn forward [] (<! (juliaworld.hero/forward)))
+  '((defn forward [] (<! (juliaworld.hero/forward)))
     (defn turn-right [] (<! (juliaworld.hero/turn-right)))
     (defn turn-left [] (<! (juliaworld.hero/turn-left)))
+	  (defn check [] (juliaworld.hero/check))
 
     (defn map
-	  ([f vals]
-	  (let [r (atom (list))]
-        (doseq [v vals]
+	    ([f vals]
+	     (let [r (atom (list))]
+         (doseq [v vals]
            (let [res (f v)]
              (swap! r concat (list (if (= (type res) cljs.core.async.impl.channels/ManyToManyChannel)
-               (<! res)
-               res)))))
-	    @r)))
-	))
+                                     (<! res)
+                                     res)))))
+	       @r)))))
 
 (defmacro code [& forms]
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
+        non-fns (cons '(juliaworld.scene/load-scene 1) non-fns)
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
-          (into
-           updated-fns
-           (clojure.core/map (partial fix-form-symbols fnames) 
-		    (list `(let [~'r ~(cons 'do non-fns)]
-			 (println 
-(if (= (type ~'r) cljs.core.async.impl.channels/ManyToManyChannel)
-               (<! ~'r)
-               ~'r))
-			 )))))
-	     nil)
-	)))
+                       (into
+                        updated-fns
+                        (clojure.core/map (partial fix-form-symbols fnames)
+		                                      (list `(let [~'r ~(cons 'do non-fns)]
+			                                             (println
+                                                    (if (= (type ~'r) cljs.core.async.impl.channels/ManyToManyChannel)
+                                                      (<! ~'r)
+                                                      ~'r))
+			                                             )))))
+	              (symbol &quot; &quot;)))))
 
 	">
 	(juliaworld.m/code
