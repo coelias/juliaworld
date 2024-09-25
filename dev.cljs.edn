@@ -1,4 +1,5 @@
 {:main juliaworld.main
+ :asset-path "./cljs-out/dev"
  :foreign-libs [{:file "js/pixi.js"
                  :provides ["pixi"]}]
  :optimizations :none

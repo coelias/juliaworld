@@ -1,0 +1,43 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main  # The branch to trigger this workflow from (adjust if necessary)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # This ensures the full repo is checked out including other branches
+
+
+    - name: Build
+      run: |
+        git config --global user.email "github@delojo.me"
+        git config --global user.name "coelias"
+        git checkout gh-pages
+        git pull origin main:main --rebase
+        lein run -m figwheel.main -b dev -s localhost:1 || true
+        if [ ! -f "target/public/cljs-out/dev-main.js" ]; then echo "MISSING: target/public/cljs-out/dev-main.js"; exit 1; fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy to branch
+      run: |
+        git config --global user.email "github@delojo.me"
+        git config --global user.name "coelias"
+        git rm -rf docs || true
+        cp -r resources/public docs
+        mv target/public/cljs-out docs
+        git add docs
+        git commit -a -m 'github pages'
+        git reset --soft HEAD~2
+        git commit -a -m 'gihub pages'
+        git push --force-with-lease
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
