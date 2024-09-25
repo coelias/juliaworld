@@ -12,7 +12,6 @@
                    (update-vals $ (fn [v] (hash-map :sprite v)))
                    (save-sprites $))))))
 
-
 (defn parse-game-resolution [scene]
   (let [{:keys [tilewidth tileheight layers]}
         scene
@@ -96,8 +95,9 @@
         parsed-lgs (map parse-background-layers layer-groups)]
     (swap! game assoc-in [:layers] parsed-lgs)))
 
+
 (defn parse-configs []
-  (let [{:keys [layers] :as scene} (-> js/scenes (js->clj :keywordize-keys true) first)]
+  (let [{:keys [layers] :as scene} (-> (get-config [:scenes]) (js->clj :keywordize-keys true))]
     (parse-game-resolution scene)
     (parse-layers layers)))
 
@@ -163,17 +163,20 @@
       )))
 
 (defn load-scenes []
-  (-> (p/all
-       (for [scene js/scenes]
-         (p/let [{:keys [width height layers tilesets]} (js->clj scene :keywordize-keys true)
-                 _ (->> tilesets
-                        (map (fn [{:keys [image name]}] [(keyword name) image]))
-                        (into {})
-                        load-textures)]
-           (as-> tilesets $
-             (mapv tileset->textures $)
-             (p/all $)
-             (p/then $ #(->> %
-                             (apply merge)
-                             (save-sprites)))))))
-      (p/then #(parse-configs))))
+  (p/let [scenes (js/fetch "/stages.tmj")
+          txt (.text scenes)]
+    (->> txt
+         js/JSON.parse
+         (add-config [:scenes]))
+    (-> (p/let [{:keys [width height layers tilesets]} (js->clj (get-config [:scenes]) :keywordize-keys true)
+                _ (->> tilesets
+                       (map (fn [{:keys [image name]}] [(keyword name) image]))
+                       (into {})
+                       load-textures)]
+          (as-> tilesets $
+            (mapv tileset->textures $)
+            (p/all $)
+            (p/then $ #(->> %
+                            (apply merge)
+                            (save-sprites)))))
+        (p/then #(parse-configs)))))
