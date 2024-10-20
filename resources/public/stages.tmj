@@ -885,6 +885,11 @@
                  "id":64,
                  "properties":[
                         {
+                         "name":"ani-name",
+                         "type":"string",
+                         "value":"water"
+                        }, 
+                        {
                          "name":"collision",
                          "type":"string",
                          "value":"1"
@@ -916,6 +921,11 @@
                         }],
                  "id":65,
                  "properties":[
+                        {
+                         "name":"ani-name",
+                         "type":"string",
+                         "value":"water"
+                        }, 
                         {
                          "name":"collision",
                          "type":"string",

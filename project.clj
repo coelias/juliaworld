@@ -2,7 +2,9 @@
   :dependencies [[org.clojure/clojure "1.11.3"]
                  [org.clojure/clojurescript "1.11.54"]
                  [funcool/promesa "11.0.678"]
+				 [prismatic/schema "1.4.1"]
 				 [viebel/klipse "7.11.4"]
+				 [binaryage/devtools "1.0.7"]
 				 ]
   :profiles
     {:dev

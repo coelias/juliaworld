@@ -3,4 +3,6 @@
  :foreign-libs [{:file "js/pixi.js"
                  :provides ["pixi"]}]
  :optimizations :none
-}
+ :preloads [devtools.preload]
+ :compiler-options {:source-map true
+                    :pretty-print true}}

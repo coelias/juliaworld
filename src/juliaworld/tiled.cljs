@@ -1,16 +1,66 @@
 (ns juliaworld.tiled
   (:require [juliaworld.state :refer [add-config get-config save-sprites game get-config get-sprite get-app]]
             [juliaworld.helpers :refer [->num props->map getPixiTexture mylog]]
+            [juliaworld.validation :refer [validate jsType]]
             [promesa.core :as p]
-            [clojure.string :as s]))
+            [clojure.string :as string]
+            [schema.core :as s]))
+
+(def tile-sch {:id s/Num
+               (s/optional-key :properties) [{:name (s/enum "basex" "basey" "ani-name" "collision" "type")
+                             :type s/Str
+                             :value s/Any}]
+               (s/optional-key :animation) [{:duration s/Num :tileid s/Num}]
+               (s/optional-key :type) s/Str})
+
+(def tileset-sch {:columns s/Num
+                   :firstgid s/Num
+                   :image s/Str
+                   :imageheight s/Num
+                   :imagewidth s/Num
+                   :margin s/Num
+                   :name s/Str
+                   :tilecount s/Num
+                   :tileheight s/Num
+                   :tilewidth s/Num
+                   :tiles [tile-sch]
+                   :spacing s/Num
+                   (s/optional-key :wangsets) s/Any})
+
+(def textures-sch {(s/cond-pre s/Keyword s/Num)
+                   {:sprite (jsType js/PIXI.Texture)
+                    (s/optional-key :id) (s/maybe s/Num)
+                    (s/optional-key :properties) {s/Keyword (s/cond-pre s/Num s/Str)}
+                    (s/optional-key :type) s/Str
+                    (s/optional-key :animation) [{:duration s/Num :tileid s/Num}]}})
+
+(def ani-info-sch {s/Keyword {:duration s/Num
+                              :basex (s/maybe s/Num)
+                              :basey (s/maybe s/Num)
+                              :ids [s/Num]}})
+
+(def animation-sch {s/Keyword {:sprite (jsType js/PIXI.AnimatedSprite)
+                               :basex s/Num
+                               :basey s/Num}})
+
+(def spritesheet-data-sch
+  {:animations {}
+   :meta {:image s/Str
+          :format s/Str
+          :scale s/Num
+          :size {:w s/Num :h s/Num}}
+   :frames {s/Num {:frame {:x s/Num :y s/Num :h s/Num :w s/Num}
+                   :sourceSize {:h s/Num :w s/Num}
+                   :spriteSourceSize {:x s/Num :y s/Num :h s/Num :w s/Num}}}})
 
 (defn load-textures [m]
-  (let [promises (flatten (map (fn [[k v]] [(p/promise k) (.load js/PIXI.Assets v)] ) m))]
-    (-> (p/all promises)
-        (p/then #(as-> % $
-                   (apply hash-map $)
-                   (update-vals $ (fn [v] (hash-map :sprite v)))
-                   (save-sprites $))))))
+  (validate {s/Keyword s/Str} m)
+   (let [promises (flatten (map (fn [[k v]] [(p/promise k) (.load js/PIXI.Assets v)] ) m))]
+     (-> (p/all promises)
+         (p/then #(as-> % $
+                    (apply hash-map $)
+                    (update-vals $ (fn [v] (hash-map :sprite v)))
+                    (save-sprites $))))))
 
 (defn parse-game-resolution [scene]
   (let [{:keys [tilewidth tileheight layers]}
@@ -73,7 +123,7 @@
      :data (merge-layers data-objs)}))
 
 (defn parse-background-layers [[_ layers]]
-  (let [bg-layers (filter (fn [{:keys [name]}] (s/includes? name "background")) layers)
+  (let [bg-layers (filter (fn [{:keys [name]}] (string/includes? name "background")) layers)
         layer-data (->> bg-layers
                         (map :data)
                         generate-sprite-containers)
@@ -89,7 +139,7 @@
            (swap! game assoc-in [:layers] layers))
   (let [layer-groups
         (->> layers
-             (group-by #(-> % :name (s/split #"-") second))
+             (group-by #(-> % :name (string/split #"-") second))
              (sort-by first))
 
         parsed-lgs (map parse-background-layers layer-groups)]
@@ -101,7 +151,13 @@
     (parse-game-resolution scene)
     (parse-layers layers)))
 
+(defn jslog [x]
+  (js/console.log x)
+  x)
+
 (defn spritesheet-data [image width height tilesize firstgid]
+  (validate (mapv s/one [s/Str s/Num s/Num s/Num s/Num]) [image width height tilesize firstgid])
+
   (->> (for [y (range 0 height tilesize)
              x (range 0 width tilesize)]
          {:x x :y y :w tilesize :h tilesize})
@@ -116,10 +172,12 @@
                       :scale 1
                       :size {:w width :h height}}}
               :frames)
+       (validate spritesheet-data-sch)
        clj->js))
 
-(defn tiles->animation-info [tileset firstgid]
-  (let [anim-tiles (->> tileset (filter :animation))
+(defn tiles->animation-info [tiles firstgid]
+  (validate (mapv s/one [[tile-sch] s/Num]) [tiles firstgid])
+  (let [anim-tiles (->> tiles (filter :animation))
         parse-item (fn [{:keys [animation properties]}]
                      (let [{:keys [ani-name basex basey]} (props->map properties)]
                        (vector
@@ -127,25 +185,27 @@
                         {:duration (-> animation first :duration (/ 1000))
                          :basex basex
                          :basey basey
-                         :ids (map #(+ firstgid (:tileid %)) animation)}
-                        )))]
+                         :ids (map #(+ firstgid (:tileid %)) animation)})))]
 
-    (into {} (map parse-item anim-tiles))))
+    (validate ani-info-sch
+              (into {} (map parse-item anim-tiles)))))
 
 (defn create-animations [ani-info textures]
-  (update-vals ani-info
-               (fn [{:keys [duration ids basex basey]}]
-                 (let [sprite (->> ids
-                                   (map str)
-                                   (map #(get textures %))
-                                   clj->js
-                                   js/PIXI.AnimatedSprite.
-                                   )]
-                   (when (> duration 0)
-                     (set! (.-animationSpeed sprite) 0.1))
-                   {:sprite sprite :basex basex :basey basey}))))
+  (validate (mapv s/one [ani-info-sch {s/Str (jsType js/PIXI.Texture)}]) [ani-info textures])
+  
+   (update-vals ani-info
+                (fn [{:keys [duration ids basex basey]}]
+                  (let [sprite (->> ids
+                                    (map str)
+                                    (map #(get textures %))
+                                    clj->js
+                                    js/PIXI.AnimatedSprite.)]
+                    (when (> duration 0)
+                      (set! (.-animationSpeed sprite) 0.1))
+                    {:sprite sprite :basex basex :basey basey}))))
 
-(defn tileset->textures [{:keys [imagewidth imageheight image tileheight tiles firstgid]}]
+(defn tileset->textures [{:keys [imagewidth imageheight image tileheight tiles firstgid] :as tset}]
+  (validate tileset-sch tset)
   (p/let [data (spritesheet-data image imagewidth imageheight tileheight firstgid)
           animations (tiles->animation-info tiles firstgid)
           spritesheet (js/PIXI.Spritesheet. (getPixiTexture image) data)
@@ -159,8 +219,8 @@
            (map (fn [[id texture]]
                   (let [id (->num id)]
                     (vector id (merge {:sprite texture} (get tiles id))))))
-           (into {}))
-      )))
+           (into {})
+           (validate textures-sch)))))
 
 (defn load-scenes []
   (p/let [scenes (js/fetch "/stages.tmj")
@@ -176,7 +236,7 @@
           (as-> tilesets $
             (mapv tileset->textures $)
             (p/all $)
-            (p/then $ #(->> %
+            (p/then $ #(some->> %
                             (apply merge)
                             (save-sprites)))))
         (p/then #(parse-configs)))))

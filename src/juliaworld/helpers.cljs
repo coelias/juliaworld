@@ -1,7 +1,5 @@
 (ns juliaworld.helpers
-  (:require [juliaworld.state :refer [get-config get-animation]])
-  )
-
+  (:require [juliaworld.state :refer [get-config get-animation]]))
 
 (defn mylog [x]
   (cljs.pprint/pprint x)

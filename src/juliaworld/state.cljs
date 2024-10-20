@@ -26,7 +26,7 @@
           js/PIXI.Sprite.))
 
 (defn get-layer [n]
-  (-> @game :layers (nth (dec n))))
+  (-> @game :layers first))
 
 (defn get-animation [name]
   (-> @game :animations name))
@@ -52,3 +52,5 @@
          (map :data)
          (map #(nth % pos))
          (map tile-props))))
+
+(-> @game :layers first)
