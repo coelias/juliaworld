@@ -246,7 +246,7 @@
            (validate textures-sch)))))
 
 (defn load-scenes []
-  (p/let [scenes (js/fetch "/stages.tmj")
+  (p/let [scenes (js/fetch "stages.tmj")
           txt (.text scenes)]
     (->> txt
          js/JSON.parse
