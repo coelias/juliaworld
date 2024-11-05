@@ -43,6 +43,37 @@
                                :basex s/Num
                                :basey s/Num}})
 
+(def tiled-layers-sch
+  {:id s/Num
+   :name s/Str
+   :opacity s/Num
+   :type s/Str
+   :visible s/Bool
+   :x s/Num
+   :y s/Num
+   (s/optional-key :layers) s/Any
+   (s/optional-key :properties) [{:name s/Str :type s/Str :value s/Any}]
+   (s/optional-key :data) [s/Num]
+   (s/optional-key :width) s/Num
+   (s/optional-key :height) s/Num})
+
+(def processed-layers-sch
+  {s/Keyword
+   {:id s/Num
+    :opacity s/Num
+    :type s/Str
+    :visible s/Bool
+    :x s/Num
+    :y s/Num
+    :deps [s/Keyword]
+    (s/optional-key :parent) s/Keyword
+    (s/optional-key :properties) {s/Keyword s/Any}
+    (s/optional-key :data) [s/Num]
+    (s/optional-key :container) (jsType js/PIXI.Container)
+    (s/optional-key :width) s/Num
+    (s/optional-key :height) s/Num}})
+
+
 (def spritesheet-data-sch
   {:animations {}
    :meta {:image s/Str
@@ -63,9 +94,7 @@
                     (save-sprites $))))))
 
 (defn parse-game-resolution [scene]
-  (let [{:keys [tilewidth tileheight layers]}
-        scene
-        {:keys [height width]} (first layers)]
+  (let [{:keys [tilewidth tileheight height width]} scene]
     (add-config [:screen-res]
                 [(* width tilewidth)
                  (* height tileheight)])
@@ -81,70 +110,64 @@
        (map #(filter (fn [x] (> x 0)) %))
        (mapv last)))
 
-(defn- get-grid-texture []
-  (let [[w h] (get-config [:tile-res])
-        pr (js/PIXI.Graphics.)
-        c (js/PIXI.Container.)]
-    (.addChild c pr)
-    (.moveTo pr 1 0)
-    (.stroke
-     (.lineTo pr w 0)
-     (clj->js {:color 0xffffff :alpha 0.08}))
-    (.moveTo pr 0 0)
-    (.stroke
-     (.lineTo pr 0 h)
-     (clj->js {:color 0xffffff :alpha 0.08}))
-    (-> (get-app)
-        .-renderer
-        (.generateTexture pr))))
-
-(defn generate-sprite-containers [data-objs]
+(defn layer-data->sprites [{:keys [data]}]
   (let [[xres yres] (get-config [:screen-res])
         [xtres ytres] (get-config [:tile-res])
         coords (for [y (range 0 yres ytres)
                      x (range 0 xres xtres)] [x y])
-        container (js/PIXI.Container.)
-        grid-container (js/PIXI.Container.)
-        grid-texture (get-grid-texture)]
-    (doseq [data data-objs
-            [sid [x y]] (map vector data coords)]
-      (when-let [s (get-sprite sid)]
-        (set! (.-x s) x)
-        (set! (.-y s) y)
-        (.addChild container s)
-        (let [sp (js/PIXI.Sprite. grid-texture)]
-          (.addChild grid-container sp)
-          (set! (.-x sp) x)
-          (set! (.-y sp) y))))
-    (set! (.-x container) 0)
-    (set! (.-y container) 0)
-    {:container container
-     :grid-container grid-container
-     :data (merge-layers data-objs)}))
+        cnt (js/PIXI.Container.)]
+    (doseq [[sid [x y]] (map vector data coords)]
+               (when-let [s (get-sprite sid)]
+                 (set! (.-x s) x)
+                 (set! (.-y s) y)
+                 (.addChild cnt s)
+                 ))
+    cnt))
 
-(defn parse-background-layers [[_ layers]]
-  (let [bg-layers (filter (fn [{:keys [name]}] (string/includes? name "background")) layers)
-        layer-data (->> bg-layers
-                        (map :data)
-                        generate-sprite-containers)
-        {:keys [herox heroy]} (-> bg-layers first :properties props->map)]
+(defn add-layer-deps [layers {:keys [name] :as layer}]
+    (->> (tree-seq #(or (:parent %) (:layers %))
+                   #(if (:parent %)
+                      (cons ((:parent %) layers) (:layers %))
+                      (:layers %))
+                   layer)
+         (filter #(and (= (:type %) "tilelayer") (not= (:name %) name)))
+         (mapv (comp keyword :name))
+         (assoc layer :deps)))
 
-    (->
-     layer-data
-     (assoc :herox herox)
-     (assoc :heroy heroy))))
+(defn layers->flat-map [l]
+  (let [m (->> (tree-seq :layers :layers l)
+             (filter :type)
+             (map #(vector (-> % :name keyword) %))
+             (into {}))]
+    (-> m
+        (update-vals #(add-layer-deps m %))
+        (update-vals #(dissoc % :name))
+        (update-vals #(dissoc % :layers)))))
+
+(defn fix-layers-names [layer]
+  (let [fix-layer-name-f (fn [{:keys [name] :as o}] (assoc o :name (str (:name layer) "-" name)))
+        fix-names (fn [l] (if (= (:type l) "group")
+                           (update l :layers #(map fix-layer-name-f %))
+                           l))]
+    (clojure.walk/prewalk fix-names layer)))
 
 (defn parse-layers [layers]
-  (comment let [layers (mapv generate-sprite-containers layers)]
-           (swap! game assoc-in [:layers] layers))
-  (let [layer-groups
-        (->> layers
-             (group-by #(-> % :name (string/split #"-") second))
-             (sort-by first))
+  (validate [tiled-layers-sch] layers)
+  (let [fix-props #(if (:properties %)
+                     (update % :properties props->map) %)
+        transform-data #(if (:data %)
+                          (assoc % :container (layer-data->sprites %)) %)
+        kwdz-parent #(if (get-in % [:properties :parent])
+                       (assoc % :parent (-> % (get-in [:properties :parent]) keyword)) %)
+        tr-fn (comp kwdz-parent fix-props transform-data)]
 
-        parsed-lgs (map parse-background-layers layer-groups)]
-    (swap! game assoc-in [:layers] parsed-lgs)))
-
+    (->> layers
+         (clojure.walk/postwalk tr-fn)
+         (map fix-layers-names)
+         (hash-map :layers)
+         layers->flat-map
+         (validate processed-layers-sch)
+         (swap! game assoc-in [:layers]))))
 
 (defn parse-configs []
   (let [{:keys [layers] :as scene} (-> (get-config [:scenes]) (js->clj :keywordize-keys true))]

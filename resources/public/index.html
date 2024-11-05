@@ -144,7 +144,7 @@
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
-        non-fns (cons '(juliaworld.scene/load-scene 1) non-fns)
+        non-fns (cons '(juliaworld.scene/load-scene :level-1) non-fns)
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
                        (into

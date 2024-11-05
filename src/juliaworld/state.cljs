@@ -25,8 +25,8 @@
           get-texture
           js/PIXI.Sprite.))
 
-(defn get-layer [n]
-  (-> @game :layers first))
+(defn get-layer [id]
+  (-> @game :layers id))
 
 (defn get-animation [name]
   (-> @game :animations name))
