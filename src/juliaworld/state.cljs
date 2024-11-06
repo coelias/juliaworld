@@ -44,13 +44,14 @@
   (:app @game))
 
 (defn xy-props [x y]
-  (let [[xb yb] (get-config [:screen-block-res])
+  (let [layers (:layers @game)
+        deps (-> [:scene] get-state layers :deps )
+        [xb yb] (get-config [:screen-block-res])
         pos (+ (* xb y) x)]
+    (js/console.log [deps])
 
-    (->> @game
-         :layers
-         (map :data)
-         (map #(nth % pos))
-         (map tile-props))))
-
-(-> @game :layers first)
+    (as-> layers $
+      (map $ deps)
+      (map :data $)
+      (map #(nth % pos) $)
+      (map tile-props $))))
