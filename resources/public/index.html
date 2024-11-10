@@ -62,6 +62,7 @@
     <div id="app">
     </div>
 	<div id="mypixi"></div>
+	<div id="description"></div>
 	<textarea class="language-klipse" id="editor" data-preamble="
 
 (ns juliaworld.hero)
@@ -74,7 +75,7 @@
 (ns juliaworld.m$macros
   (:require [cljs.core.async :refer [go <! >! chan]]
             [cljs.pprint :refer [pprint]])
-  (:refer-clojure :exclude [map]))
+  (:refer-clojure :exclude [repeatedly]))
 
 (def ^:dynamic *debug* false)
 
@@ -130,15 +131,16 @@
     (defn turn-left [] (<! (juliaworld.hero/turn-left)))
 	  (defn check [] (juliaworld.hero/check))
 
-    (defn map
-	    ([f vals]
-	     (let [r (atom (list))]
-         (doseq [v vals]
-           (let [res (f v)]
-             (swap! r concat (list (if (= (type res) cljs.core.async.impl.channels/ManyToManyChannel)
-                                     (<! res)
-                                     res)))))
-	       @r)))))
+	(defn repeatedly 
+	 ([n f]
+      (let [r (atom (list))]
+       (doseq [v (range n)]
+         (let [res (f v)]
+           (swap! r concat (list (if (= (type res) cljs.core.async.impl.channels/ManyToManyChannel)
+                                   (<! res)
+                                   res)))))
+	     @r)))
+	))
 
 (defmacro code [& forms]
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))

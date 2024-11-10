@@ -65,6 +65,7 @@
     :visible s/Bool
     :x s/Num
     :y s/Num
+    (s/optional-key :lowest-y) s/Num
     :deps [s/Keyword]
     (s/optional-key :parent) s/Keyword
     (s/optional-key :properties) {s/Keyword s/Any}
@@ -72,7 +73,6 @@
     (s/optional-key :container) (jsType js/PIXI.Container)
     (s/optional-key :width) s/Num
     (s/optional-key :height) s/Num}})
-
 
 (def spritesheet-data-sch
   {:animations {}
@@ -124,6 +124,11 @@
                  ))
     cnt))
 
+(defn lowest-y-position [{:keys [container] :as layer}]
+  (let [[_ ytres] (get-config [:tile-res])
+        lowest (-> container .-children last .-y (/ ytres))]
+    (assoc layer :lowest-y lowest)))
+
 (defn add-layer-deps [layers {:keys [name] :as layer}]
     (->> (tree-seq #(or (:parent %) (:layers %))
                    #(if (:parent %)
@@ -159,7 +164,8 @@
                           (assoc % :container (layer-data->sprites %)) %)
         kwdz-parent #(if (get-in % [:properties :parent])
                        (assoc % :parent (-> % (get-in [:properties :parent]) keyword)) %)
-        tr-fn (comp kwdz-parent fix-props transform-data)]
+        bottom-y #(if (:container %) (lowest-y-position %) %)
+        tr-fn (comp bottom-y kwdz-parent fix-props transform-data)]
 
     (->> layers
          (clojure.walk/postwalk tr-fn)

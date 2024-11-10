@@ -1,15 +1,14 @@
 (ns juliaworld.main
   (:require [pixi]
-             [promesa.core :as p]
-             [clojure.string :as s]
-             [klipse.run.plugin.plugin]
-             [klipse.plugin :as klipse-plugin]
-             [juliaworld.state :refer [add-config get-config game get-app get-animation get-state set-state get-sprite]]
-             [juliaworld.tiled :as tl]
-             [juliaworld.helpers :as hp]
-             [juliaworld.hero :refer [set-hero-pos]]
-             [juliaworld.scene :as sc]
-             ))
+            [promesa.core :as p]
+            [clojure.string :as s]
+            [klipse.run.plugin.plugin]
+            [klipse.plugin :as klipse-plugin]
+            [juliaworld.state :refer [add-config get-config game get-app get-animation get-state set-state get-sprite]]
+            [juliaworld.tiled :as tl]
+            [juliaworld.helpers :as hp]
+            [juliaworld.hero :refer [set-hero-pos]]
+            [juliaworld.scene :as sc]))
 
 (defn create-app [div & {:keys [options resize]}]
   (p/let [_ (tl/load-scenes)

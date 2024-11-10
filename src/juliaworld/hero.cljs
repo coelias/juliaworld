@@ -1,7 +1,17 @@
 (ns juliaworld.hero
   (:require [juliaworld.state :as st]
-
             [cljs.core.async :refer [chan >! <! go]]))
+
+(defn calculate-hero-z [heroy layers]
+  (loop  [[f & r] layers pos 0]
+    (if f
+      (let [{:keys [lowest-y] {:keys [z-index]} :properties} (st/get-layer f)]
+        (cond
+          (not z-index) (recur r (inc pos))
+          (>= heroy lowest-y) (recur r (inc pos))
+          :default (recur r pos)))
+      pos)))
+
 
 (defn hero-coords [x y name]
   (let [[tilew tileh] (st/get-config [:tile-res])
@@ -15,6 +25,8 @@
     (set! (.-x sprite) x)
     (set! (.-y sprite) y)))
 
+(-> (st/get-layer :level-1-diamonds) :properties)
+
 (defn remove-hero []
   (let [current (st/get-state [:hero :current])
         sprite (-> current
@@ -24,12 +36,13 @@
     (-> (st/get-app) .-stage (.removeChild sprite))))
 
 (defn show-hero []
-  (let [current (st/get-state [:hero :current])
-        hero (:sprite  (st/get-animation current))
-        [x y] (st/get-state [:hero :pos])]
-    (.addChild (.-stage (st/get-app)) hero)
-    (set-hero-pos x y current)
-    (st/start-animation current)))
+   (let [current (st/get-state [:hero :current])
+         hero (:sprite  (st/get-animation current))
+         [x y] (st/get-state [:hero :pos])
+         new-z (calculate-hero-z y (st/get-current-layers))]
+     (.addChildAt (.-stage (st/get-app)) hero new-z)
+     (set-hero-pos x y current)
+     (st/start-animation current)))
 
 (defn turn-right []
   (let [next (case (st/get-state [:hero :current])

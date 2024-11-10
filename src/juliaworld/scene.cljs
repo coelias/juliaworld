@@ -35,7 +35,7 @@
           (.addChild cnt sp)
           (set! (.-x sp) x)
           (set! (.-y sp) y)))
-      cnt))) 
+      cnt)))
 
 (defn draw-layer [{:keys [deps]}]
   (let [stage (-> (st/get-app)
@@ -58,11 +58,15 @@
         (set! resize))))
 
 (defn load-scene [n]
-  (let [{{:keys [herox heroy]} :properties :as l} (st/get-layer n)
+  (let [{{:keys [herox heroy description]} :properties :as l} (st/get-layer n)
         stage (.-stage (st/get-app))]
     (st/set-state [:scene] n)
     (st/set-state [:hero :pos] [herox heroy])
     (.removeChildren stage)
     (draw-layer l)
     (st/set-state [:hero :current] :idle-down)
-    (hr/show-hero)))
+    (hr/show-hero)
+    (-> (.getElementById js/document "description")
+        .-innerHTML
+        (set! description))
+    nil))

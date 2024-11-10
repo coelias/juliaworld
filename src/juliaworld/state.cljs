@@ -40,6 +40,13 @@
 (defn tile-props [n]
   (-> @game :sprites (get n) :properties))
 
+(defn get-scene-layer []
+  (let [s (get-state [:scene])]
+    (-> @game :layers s)))
+
+(defn get-current-layers []
+  (-> (get-scene-layer) :deps))
+
 (defn get-app []
   (:app @game))
 
@@ -48,7 +55,6 @@
         deps (-> [:scene] get-state layers :deps )
         [xb yb] (get-config [:screen-block-res])
         pos (+ (* xb y) x)]
-    (js/console.log [deps])
 
     (as-> layers $
       (map $ deps)
