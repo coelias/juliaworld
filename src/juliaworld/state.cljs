@@ -47,6 +47,10 @@
 (defn get-current-layers []
   (-> (get-scene-layer) :deps))
 
+(defn sprite-info [id]
+  (let [{:keys [type properties]} (-> @game :sprites (get id))]
+    (assoc properties :class type)))
+
 (defn get-app []
   (:app @game))
 

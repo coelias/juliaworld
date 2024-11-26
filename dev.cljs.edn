@@ -1,7 +1,10 @@
 {:main juliaworld.main
  :asset-path "./cljs-out/dev"
  :foreign-libs [{:file "js/pixi.js"
-                 :provides ["pixi"]}]
+                 :provides ["pixi"]}
+                {:file "js/pixi-sound.js"
+				 :provides ["pixisound"]}
+				]
  :optimizations :none
  :preloads [devtools.preload]
  :compiler-options {:source-map true

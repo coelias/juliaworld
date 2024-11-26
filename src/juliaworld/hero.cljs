@@ -114,6 +114,9 @@
     (-> (st/get-app) .-ticker (.add fn))
     finished))
 
+(defn post-arrival-actions [nx ny]
+  )
+
 (defn forward []
   (let [current (st/get-state [:hero :current])
         next (case current
@@ -135,7 +138,8 @@
         (remove-hero)
         (st/set-state [:hero :pos] [nx ny])
         (st/set-state [:hero :current] current)
-        (show-hero))
+        (show-hero)
+        (post-arrival-actions nx ny))
       (js/setTimeout
        #(go
           (>! f1 :forward)) 100))

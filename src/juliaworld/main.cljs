@@ -8,7 +8,9 @@
             [juliaworld.tiled :as tl]
             [juliaworld.helpers :as hp]
             [juliaworld.hero :refer [set-hero-pos]]
-            [juliaworld.scene :as sc]))
+            [juliaworld.scene :as sc]
+            [juliaworld.sound :refer [playsong]]
+            [juliaworld.sound :as snd]))
 
 (defn create-app [div & {:keys [options resize]}]
   (p/let [_ (tl/load-scenes)
@@ -20,13 +22,16 @@
                                           :height (-> y (* resize) int)} options)))]
       (.appendChild
        element
-       (.-canvas app)))
-    (swap! game assoc :app app)))
+       (.-canvas app))
+      (snd/load-audios))
+
+    (swap! game assoc :app app)
+    (playsong)))
 
 (p/let [_ (create-app "mypixi" :options {:background "#ff0000"} :resize 1.5)]
   (sc/load-scene :level-1))
 
 (klipse-plugin/init #js {:selector ".language-klipse"
-                                :selector_reagent ".language-reagent"
-                                :eval_idle_msec 999999999
-                                :codemirror_options_in {:lineNumbers true}})
+                         :selector_reagent ".language-reagent"
+                         :eval_idle_msec 999999999
+                         :codemirror_options_in {:lineNumbers true}})

@@ -1168,10 +1168,16 @@
                  "id":11,
                  "properties":[
                         {
+                         "name":"action",
+                         "type":"string",
+                         "value":"remove|play[pick]"
+                        }, 
+                        {
                          "name":"type",
                          "type":"string",
                          "value":"jewel"
-                        }]
+                        }],
+                 "type":"item"
                 }, 
                 {
                  "id":13,
@@ -1209,10 +1215,16 @@
                  "id":18,
                  "properties":[
                         {
+                         "name":"action",
+                         "type":"string",
+                         "value":"remove|play[pick]"
+                        }, 
+                        {
                          "name":"type",
                          "type":"string",
                          "value":"diamond"
-                        }]
+                        }],
+                 "type":"item"
                 }, 
                 {
                  "id":39,
