@@ -1,6 +1,19 @@
 (ns juliaworld.hero
   (:require [juliaworld.state :as st]
+            [juliaworld.sound :as snd]
             [cljs.core.async :refer [chan >! <! go]]))
+
+(defmulti process-item-action (comp first first :action))
+
+(defmethod process-item-action "play" [{:keys [action]}]
+  (-> action
+      first
+      second
+      keyword
+      snd/play))
+
+(defmethod process-item-action "remove" [{:keys [sprite]}]
+  (set! (.-visible sprite) false))
 
 (defn calculate-hero-z [heroy layers]
   (loop  [[f & r] layers pos 0]
@@ -114,8 +127,17 @@
     (-> (st/get-app) .-ticker (.add fn))
     finished))
 
+(defn process-item-actions [item]
+  (loop [i item]
+    (let [{:keys [action]} i]
+      (when (not-empty action)
+        (process-item-action i)
+        (recur (update i :action rest))))))
+
 (defn post-arrival-actions [nx ny]
-  )
+  (when-let [items (seq (st/position->items nx ny))]
+    (doseq [i items]
+      (process-item-actions i))))
 
 (defn forward []
   (let [current (st/get-state [:hero :current])

@@ -25,6 +25,13 @@
           get-texture
           js/PIXI.Sprite.))
 
+(defn position->items [x y]
+  (->> @game
+      :layers
+      vals
+      (mapcat :items)
+      (keep (fn [[c item]] (when (= [x y] c) item)))))
+
 (defn get-layer [id]
   (-> @game :layers id))
 

@@ -61,7 +61,8 @@
   {[s/Num] {:type s/Str
             :class s/Str
             :sprite (jsType js/PIXI.Sprite)
-            :action [[s/Str]]}})
+            :action [[s/Str]]
+            (s/optional-key :layer) s/Keyword}})
 
 (def processed-layers-sch
   {s/Keyword
