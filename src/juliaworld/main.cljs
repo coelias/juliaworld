@@ -29,7 +29,7 @@
     (playsong)))
 
 (p/let [_ (create-app "mypixi" :options {:background "#ff0000"} :resize 1.5)]
-  (sc/load-scene :level-1))
+  (sc/set-level :level-1))
 
 (klipse-plugin/init #js {:selector ".language-klipse"
                          :selector_reagent ".language-reagent"

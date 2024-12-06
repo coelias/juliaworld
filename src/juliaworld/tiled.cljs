@@ -30,7 +30,7 @@
 (def textures-sch {(s/cond-pre s/Keyword s/Num)
                    {:sprite (jsType js/PIXI.Texture)
                     (s/optional-key :id) (s/maybe s/Num)
-                    (s/optional-key :properties) {s/Keyword (s/cond-pre s/Num s/Str)}
+                    (s/optional-key :properties) {s/Keyword (s/cond-pre s/Num s/Any)}
                     (s/optional-key :type) s/Str
                     (s/optional-key :animation) [{:duration s/Num :tileid s/Num}]}})
 
@@ -62,6 +62,7 @@
             :class s/Str
             :sprite (jsType js/PIXI.Sprite)
             :action [[s/Str]]
+            :visible s/Bool
             (s/optional-key :layer) s/Keyword}})
 
 (def processed-layers-sch
@@ -75,6 +76,7 @@
     (s/optional-key :lowest-y) s/Num
     :deps [s/Keyword]
     (s/optional-key :parent) s/Keyword
+    (s/optional-key :score) s/Int
     (s/optional-key :properties) {s/Keyword s/Any}
     (s/optional-key :data) [s/Num]
     (s/optional-key :container) (jsType js/PIXI.Container)
@@ -136,7 +138,7 @@
    (filter identity
            (for [[c {{:keys [class action]} :info :keys [info sprite]}] m]
              (when (#{"item"} class)
-               [c (merge info {:sprite sprite :action (process-action action)})])))
+               [c (merge info {:visible true :sprite sprite :action (process-action action)})])))
    (into {})
    (validate item-sprites-info)))
 
@@ -269,7 +271,7 @@
                  (into {} (map #(vector (+ firstgid (:id %)) %) tiles))
                  #(update % :properties props->map))]
     (let [textures  (js->clj textures)]
-      (swap! game assoc :animations (create-animations animations textures))
+      (swap! game update :animations merge (create-animations animations textures))
       (->> textures
            (map (fn [[id texture]]
                   (let [id (->num id)]

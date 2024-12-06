@@ -1,4 +1,5 @@
-(ns juliaworld.state)
+(ns juliaworld.state
+  )
 
 (defonce game (atom {:sprites {} :layers {} :app nil :config {}}))
 
@@ -28,12 +29,45 @@
 (defn position->items [x y]
   (->> @game
       :layers
-      vals
-      (mapcat :items)
-      (keep (fn [[c item]] (when (= [x y] c) item)))))
+      (map (fn [[ly-name {:keys [items]}]]
+             (when items
+               (update-vals items #(merge % {:layer ly-name :position [x y]})))))
+      (map #(get % [x y]))
+      (filter map?)
+      (filter :visible)))
 
 (defn get-layer [id]
   (-> @game :layers id))
+
+(defn hide-item [layer position]
+  (let [path [:layers layer :items position]
+        {:keys [sprite]} (get-in @game path)]
+    (set! (.-visible sprite) false)
+    (swap! game assoc-in (conj path :visible) false)))
+
+(defn- unhide-items []
+  (reset! game (clojure.walk/postwalk
+                #(if (and (contains? % :visible) (contains? % :action))
+                   (do
+                     (set! (.-visible (:sprite %)) true)
+                     (assoc % :visible true))
+                   %)
+                @game)))
+
+(defn reset-state [scene-number herox heroy end-score]
+  (unhide-items)
+  (set-state [:score] 0)
+  (set-state [:scene] scene-number)
+  (set-state [:hero :pos] [herox heroy])
+  (set-state [:final-score] end-score))
+
+(defn level-cleared? []
+  (let [{{:keys [score final-score]} :state} @game]
+    (= score final-score)))
+
+(defn inc-score []
+  (swap! game update-in [:state :score] inc)
+  )
 
 (defn get-animation [name]
   (-> @game :animations name))

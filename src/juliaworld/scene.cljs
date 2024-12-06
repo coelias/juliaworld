@@ -2,6 +2,7 @@
   (:require [juliaworld.state :as st]
             [juliaworld.hero :as hr]
             [juliaworld.state :refer [get-config get-app]]
+            [juliaworld.helpers :refer [load-saved-code]]
             [pixi]
             ))
 
@@ -58,10 +59,9 @@
         (set! resize))))
 
 (defn load-scene [n]
-  (let [{{:keys [herox heroy description]} :properties :as l} (st/get-layer n)
+  (let [{{:keys [herox heroy description score]} :properties :as l} (st/get-layer n)
         stage (.-stage (st/get-app))]
-    (st/set-state [:scene] n)
-    (st/set-state [:hero :pos] [herox heroy])
+    (st/reset-state n herox heroy score)
     (.removeChildren stage)
     (draw-layer l)
     (st/set-state [:hero :current] :idle-down)
@@ -70,3 +70,15 @@
         .-innerHTML
         (set! description))
     nil))
+
+(defn set-level [level]
+  (load-scene level)
+  (load-saved-code))
+
+(defn check-scores []
+  (if (st/level-cleared?)
+    (-> (st/get-app)
+        .-stage
+        (.addChild (-> :levelcleared st/get-layer :container)))))
+
+

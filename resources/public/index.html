@@ -70,8 +70,11 @@
 (declare turn-left)
 (declare turn-right)
 (declare check)
+(ns juliaworld.helpers)
+(declare save-editor-contents)
 (ns juliaworld.scene)
 (declare load-scene)
+(declare check-scores)
 (ns juliaworld.m$macros
   (:require [cljs.core.async :refer [go <! >! chan]]
             [cljs.pprint :refer [pprint]])
@@ -146,7 +149,7 @@
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
-        non-fns (cons '(juliaworld.scene/load-scene :level-1) non-fns)
+        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/load-scene :level-1)) non-fns '((juliaworld.scene/check-scores)) )
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
                        (into
@@ -160,13 +163,7 @@
 			                                             )))))
 	              (symbol &quot; &quot;)))))
 
-	">
-	(juliaworld.m/code
-	;; vvv - Write here your code - vvv
-
-
-	)
-	</textarea>
+	"></textarea>
 	<button onclick="evaluateCode()">Run</button>
     <script src="./cljs-out/dev-main.js" type="text/javascript"></script>
   </body>

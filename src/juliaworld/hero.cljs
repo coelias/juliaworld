@@ -12,8 +12,11 @@
       keyword
       snd/play))
 
-(defmethod process-item-action "remove" [{:keys [sprite]}]
-  (set! (.-visible sprite) false))
+(defmethod process-item-action "remove" [{:keys [sprite layer position]}]
+  (st/hide-item layer position))
+
+(defmethod process-item-action "score" []
+  (st/inc-score))
 
 (defn calculate-hero-z [heroy layers]
   (loop  [[f & r] layers pos 0]
