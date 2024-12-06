@@ -149,18 +149,18 @@
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
-        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/load-scene :level-1)) non-fns '((juliaworld.scene/check-scores)) )
+        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/load-scene :level-1)) non-fns)
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
                        (into
                         updated-fns
                         (clojure.core/map (partial fix-form-symbols fnames)
-		                                      (list `(let [~'r ~(cons 'do non-fns)]
+		                                      (list `(let [~'r ~(cons 'do non-fns)
+											               ~'_k (juliaworld.scene/check-scores)]
 			                                             (println
                                                     (if (= (type ~'r) cljs.core.async.impl.channels/ManyToManyChannel)
                                                       (<! ~'r)
-                                                      ~'r))
-			                                             )))))
+                                                      ~'r)))))))
 	              (symbol &quot; &quot;)))))
 
 	"></textarea>
