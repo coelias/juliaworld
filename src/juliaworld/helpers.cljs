@@ -1,5 +1,5 @@
 (ns juliaworld.helpers
-  (:require [juliaworld.state :refer [get-config get-animation get-state]]))
+  (:require [juliaworld.state :refer [get-config get-animation get-state get-layer]]))
 
 (defn mylog [x]
   (js/console.log x)
@@ -37,20 +37,17 @@
     (if (not (empty? code))
       (store-property [:code level] code))))
 
+(defn get-scene-code []
+  (let [level (get-state [:scene])]
+    (-> level get-layer :properties :code)))
+
 
 (defn load-saved-code []
   (let [level (get-state [:scene])
-        code (get-stored-property [:code level])]
-    (when code
+        code (or (get-stored-property [:code level]) (get-scene-code))]
       (-> ".CodeMirror"
           js/document.querySelector
           .-CodeMirror
           (.setValue (if (empty? code)
-                       "(juliaworld.m/code
-                        ;; vvv - Write here your code - vvv
-
-
-                        )"
-                       code
-                       ))))))
-
+                       "(juliaworld.m/code\n;; vvv - Write here your code - vvv\n\n\n)"
+                       code)))))

@@ -66,8 +66,7 @@
     (= score final-score)))
 
 (defn inc-score []
-  (swap! game update-in [:state :score] inc)
-  )
+  (swap! game update-in [:state :score] inc))
 
 (defn get-animation [name]
   (-> @game :animations name))
