@@ -205,7 +205,13 @@
          (hash-map :layers)
          layers->flat-map
          (validate processed-layers-sch)
-         (swap! game assoc-in [:layers]))))
+         (swap! game assoc-in [:layers])
+         :layers
+         keys
+         (map name)
+         (filter #(re-matches #"level-[0-9]" %))
+         count
+         (add-config [:n-levels]))))
 
 (defn parse-configs []
   (let [{:keys [layers] :as scene} (-> (get-config [:scenes]) (js->clj :keywordize-keys true))]
@@ -278,6 +284,7 @@
                     (vector id (merge {:sprite texture} (get tiles id))))))
            (into {})
            (validate textures-sch)))))
+
 
 (defn load-scenes []
   (p/let [scenes (js/fetch "stages.tmj")

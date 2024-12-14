@@ -6,8 +6,11 @@
 (defn add-config [path v]
   (swap! game assoc-in (cons :config path) v))
 
-(defn get-config [path]
-  (-> @game (get-in (cons :config path))))
+(defn get-config
+  ([path]
+   (-> @game (get-in (cons :config path))))
+  ([path default]
+   (or (get-config path) default)))
 
 (defn set-state [path value]
   (swap! game assoc-in (cons :state path) value))

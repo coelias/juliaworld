@@ -59,12 +59,15 @@
     </style>
   </head>
   <body>
-    <div id="app">
-    </div>
-	<div id="mypixi"></div>
-	<div id="description"></div>
+  <div id="menu">
+  </div>
+  <div id="codeeditor" style="display: none; pointerEvents: none;'">
+    <div id="gameview">
+	    <div id="mypixi"></div>
+	    <div id="description"></div>
+	</div>
+	
 	<textarea class="language-klipse" id="editor" data-preamble="
-
 (ns juliaworld.hero)
 (declare forward)
 (declare turn-left)
@@ -73,7 +76,7 @@
 (ns juliaworld.helpers)
 (declare save-editor-contents)
 (ns juliaworld.scene)
-(declare load-scene)
+(declare reload-scene)
 (declare check-scores)
 (ns juliaworld.m$macros
   (:require [cljs.core.async :refer [go <! >! chan]]
@@ -149,7 +152,7 @@
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
-        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/load-scene :level-1)) non-fns)
+        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/reload-scene)) non-fns)
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
                        (into
@@ -165,6 +168,7 @@
 
 	"></textarea>
 	<button onclick="evaluateCode()">Run</button>
+	</div>
     <script src="./cljs-out/dev-main.js" type="text/javascript"></script>
   </body>
 </html>
