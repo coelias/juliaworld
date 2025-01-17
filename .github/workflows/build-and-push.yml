@@ -22,6 +22,8 @@ jobs:
         git config --global user.name "coelias"
         git checkout gh-pages
         git pull origin main:main --rebase
+        sudo apt-get update
+        sudo apt-get install -y leiningen
         lein run -m figwheel.main -b dev -s localhost:1 || true
         if [ ! -f "target/public/cljs-out/dev-main.js" ]; then echo "MISSING: target/public/cljs-out/dev-main.js"; exit 1; fi
       env:
