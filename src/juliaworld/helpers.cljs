@@ -31,6 +31,15 @@
       cljs.reader/read-string
       (get-in path)))
 
+(defn get-completed-levels []
+  (or (get-stored-property [:progress]) 1))
+
+(defn update-progress [level]
+  (let [newprogress (max (inc level) (get-completed-levels))
+        total-levels (get-config [:n-levels])]
+    (store-property [:progress] 
+                    (min total-levels newprogress))))
+
 (defn save-editor-contents []
   (let [level (get-state [:scene])
         code (-> ".CodeMirror" js/document.querySelector .-CodeMirror .getValue)]

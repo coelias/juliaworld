@@ -1,5 +1,4 @@
-(ns juliaworld.state
-  )
+(ns juliaworld.state)
 
 (defonce game (atom {:sprites {} :layers {} :app nil :config {}}))
 
@@ -28,16 +27,6 @@
   (some-> name
           get-texture
           js/PIXI.Sprite.))
-
-(defn position->items [x y]
-  (->> @game
-      :layers
-      (map (fn [[ly-name {:keys [items]}]]
-             (when items
-               (update-vals items #(merge % {:layer ly-name :position [x y]})))))
-      (map #(get % [x y]))
-      (filter map?)
-      (filter :visible)))
 
 (defn get-layer [id]
   (-> @game :layers id))
@@ -87,6 +76,14 @@
   (let [s (get-state [:scene])]
     (-> @game :layers s)))
 
+(defn get-level-number []
+  (-> [:scene]
+      get-state
+      name
+      (clojure.string/split "-")
+      last
+      js/parseInt))
+
 (defn get-current-layers []
   (-> (get-scene-layer) :deps))
 
@@ -108,3 +105,13 @@
       (map :data $)
       (map #(nth % pos) $)
       (map tile-props $))))
+
+(defn position->items [x y]
+  (let [layers (-> @game :layers (select-keys (get-current-layers)))]
+    (->> layers
+         (map (fn [[ly-name {:keys [items]}]]
+                (when items
+                  (update-vals items #(merge % {:layer ly-name :position [x y]})))))
+         (map #(get % [x y]))
+         (filter map?)
+         (filter :visible))))

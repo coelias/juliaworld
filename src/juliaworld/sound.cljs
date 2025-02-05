@@ -1,6 +1,5 @@
 (ns juliaworld.sound
-  (:require [pixisound])
-  )
+  (:require [pixisound]))
 
 (defonce legacy (set! (.-useLegacy js/PIXI.sound) true))
 

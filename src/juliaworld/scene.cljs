@@ -4,8 +4,8 @@
             [juliaworld.state :refer [add-config get-config game get-app get-state set-state get-sprite get-layer reset-state level-cleared?]]
             [promesa.core :as p]
             [juliaworld.hero :as hr]
-            [juliaworld.state :refer [get-config get-app]]
-            [juliaworld.helpers :refer [load-saved-code]]
+            [juliaworld.state :refer [get-config get-app get-level-number]]
+            [juliaworld.helpers :refer [load-saved-code get-completed-levels update-progress]]
             [juliaworld.sound :refer [playsong load-audios]]
             [klipse.run.plugin.plugin]
             [klipse.plugin :as klipse-plugin]
@@ -85,10 +85,12 @@
   (load-saved-code))
 
 (defn check-scores []
-  (if (level-cleared?)
+  (when (level-cleared?)
     (-> (get-app)
         .-stage
-        (.addChild (-> :levelcleared get-layer :container)))))
+        (.addChild (-> :levelcleared get-layer :container)))
+    (update-progress (get-level-number))))
+
 
 
 (defn clear-div [id]
@@ -140,9 +142,8 @@
 (defn create-app [div & {:keys [options resize]}]
   (-> "codeeditor"
       js/document.getElementById
-      (.prepend (HTMLButton "Back to menu" #(create-menu)))
+      (.prepend (HTMLButton "Back to menu" #(create-menu))))
 
-      )
   (p/let [_ (tl/load-scenes)
           [x y] (get-config [:screen-res])
           element (.getElementById js/document div)
@@ -173,7 +174,7 @@
 
 
 (defn create-menu []
-  (let [levels (get-config [:n-levels] 1)
+  (let [levels (get-completed-levels)
         m (-> "menu" (js/document.getElementById))]
     (clear-div "menu")
     (hide-div "codeeditor")
