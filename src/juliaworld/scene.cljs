@@ -1,7 +1,7 @@
 (ns juliaworld.scene
   (:require [juliaworld.state :as st]
             [juliaworld.tiled :as tl]
-            [juliaworld.state :refer [add-config get-config game get-app get-state set-state get-sprite get-layer reset-state level-cleared?]]
+            [juliaworld.state :refer [add-config get-config game get-app get-state set-state get-sprite get-layer reset-state level-cleared? randomize-jewels]]
             [promesa.core :as p]
             [juliaworld.hero :as hr]
             [juliaworld.state :refer [get-config get-app get-level-number]]
@@ -12,6 +12,8 @@
             [pixi]
             ))
 
+;; generates the texture that will overlay the whole scene, so
+;; coordinates and distances can be measured visually in tiles
 (defn get-grid-texture []
   (let [[w h] (get-config [:tile-res])
         pr (js/PIXI.Graphics.)
@@ -78,7 +80,8 @@
     nil))
 
 (defn reload-scene []
-  (load-scene (get-state [:scene])))
+  (load-scene (get-state [:scene]))
+  (randomize-jewels))
 
 (defn set-level [level]
   (load-scene level)
@@ -90,8 +93,6 @@
         .-stage
         (.addChild (-> :levelcleared get-layer :container)))
     (update-progress (get-level-number))))
-
-
 
 (defn clear-div [id]
   (let [ga (-> id

@@ -7,7 +7,7 @@
             [schema.core :as s]))
 
 (def tile-sch {:id s/Num
-               (s/optional-key :properties) [{:name (s/enum "basex" "basey" "ani-name" "collision" "type" "action")
+               (s/optional-key :properties) [{:name (s/enum "basex" "basey" "ani-name" "collision" "type" "action" "ignore")
                                               :type s/Str
                                               :value s/Any}]
                (s/optional-key :animation) [{:duration s/Num :tileid s/Num}]
@@ -63,6 +63,7 @@
             :sprite (jsType js/PIXI.Sprite)
             :action [[s/Str]]
             :visible s/Bool
+            (s/optional-key :init-hidden) s/Bool
             (s/optional-key :layer) s/Keyword}})
 
 (def processed-layers-sch
@@ -133,16 +134,16 @@
       (list %))
    (string/split action #"\|")))
 
-(defn sprites-map->info [m]
+(defn sprites-map->info [m {:keys [hidden]}]
   (->>
    (filter identity
            (for [[c {{:keys [class action]} :info :keys [info sprite]}] m]
              (when (#{"item"} class)
-               [c (merge info {:visible true :sprite sprite :action (process-action action)})])))
+               [c (merge info {:init-hidden (boolean hidden) :visible (not hidden) :sprite sprite :action (process-action action)})])))
    (into {})
    (validate item-sprites-info)))
 
-(defn layer-data->coord-sprites-info [{:keys [data]}]
+(defn layer-data->coord-sprites-info [{:keys [data properties]}]
   (let [[xres yres] (get-config [:screen-res])
         [xtres ytres] (get-config [:tile-res])
         coords (for [y (range 0 yres ytres)
@@ -152,9 +153,11 @@
                           (when-let [s (get-sprite sid)]
                             (set! (.-x s) x)
                             (set! (.-y s) y)
+                            (when (:hidden properties)
+                              (set! (.-visible s) false))
                             [[(/ x xtres) (/ y ytres)] {:sprite s :info (sprite-info sid)}])))]
     {:container (sprites-map->container sprites)
-     :items (sprites-map->info sprites)}))
+     :items (sprites-map->info sprites properties)}))
 
 (defn lowest-y-position [{:keys [container] :as layer}]
   (let [[_ ytres] (get-config [:tile-res])
@@ -197,7 +200,7 @@
         kwdz-parent #(if (get-in % [:properties :parent])
                        (assoc % :parent (-> % (get-in [:properties :parent]) keyword)) %)
         bottom-y #(if (:container %) (lowest-y-position %) %)
-        tr-fn (comp bottom-y kwdz-parent fix-props transform-data)]
+        tr-fn (comp bottom-y kwdz-parent transform-data fix-props)]
 
     (->> layers
          (clojure.walk/postwalk tr-fn)

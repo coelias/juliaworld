@@ -41,8 +41,6 @@
     (set! (.-x sprite) x)
     (set! (.-y sprite) y)))
 
-(-> (st/get-layer :level-1-diamonds) :properties)
-
 (defn remove-hero []
   (let [current (st/get-state [:hero :current])
         sprite (-> current

@@ -31,23 +31,65 @@
 (defn get-layer [id]
   (-> @game :layers id))
 
+(defn get-scene-layer []
+  (let [s (get-state [:scene])]
+    (-> @game :layers s)))
+
+(defn get-current-layers []
+  (-> (get-scene-layer) :deps))
+
 (defn hide-item [layer position]
   (let [path [:layers layer :items position]
         {:keys [sprite]} (get-in @game path)]
     (set! (.-visible sprite) false)
     (swap! game assoc-in (conj path :visible) false)))
 
-(defn- unhide-items []
+(defn show-item [layer position]
+  (let [path [:layers layer :items position]
+        {:keys [sprite]} (get-in @game path)]
+    (set! (.-visible sprite) true)
+    (swap! game assoc-in (conj path :visible) true)))
+
+(defn randomize-jewels []
+  (let [items (->> (get-current-layers)
+                   (mapcat (fn [lyr] (->> @game :layers lyr :items (map (fn [[c d]] [c (assoc d :layer lyr)]))))))
+        all-jewels (->> items
+                        (filter #(#{"bad-jewel" "jewel" "grey-jewel"} (-> % second :type)))
+                        (group-by first))
+        halfjewels (-> all-jewels count (/ 2) js/Math.round)
+        [goodjewels badjewels] (partition halfjewels halfjewels nil (shuffle all-jewels))]
+
+    (doseq [[pos items] goodjewels]
+      (when (= 3 (count items))
+        (doseq [[_ {:keys [layer type]}] items]
+          (case type
+            "bad-jewel" (hide-item layer pos)
+            "grey-jewel" (hide-item layer pos)
+            "jewel" (show-item layer pos)))))
+
+    (doseq [[pos items] badjewels]
+      (when (= 3 (count items))
+        (doseq [[_ {:keys [layer type]}] items]
+          (case type
+            "bad-jewel" (show-item layer pos)
+            "grey-jewel" (hide-item layer pos)
+            "jewel" (hide-item layer pos)))))))
+
+(defn- reset-hidden-items []
   (reset! game (clojure.walk/postwalk
                 #(if (and (contains? % :visible) (contains? % :action))
-                   (do
-                     (set! (.-visible (:sprite %)) true)
-                     (assoc % :visible true))
+                   (if (:init-hidden %)
+                     (do
+                       (set! (.-visible (:sprite %)) false)
+                       (assoc % :visible false))
+                     (do
+                       (set! (.-visible (:sprite %)) true)
+                       (assoc % :visible true)))
                    %)
                 @game)))
 
 (defn reset-state [scene-number herox heroy end-score]
-  (unhide-items)
+  (reset-hidden-items)
   (set-state [:score] 0)
   (set-state [:scene] scene-number)
   (set-state [:hero :pos] [herox heroy])
@@ -72,10 +114,6 @@
 (defn tile-props [n]
   (-> @game :sprites (get n) :properties))
 
-(defn get-scene-layer []
-  (let [s (get-state [:scene])]
-    (-> @game :layers s)))
-
 (defn get-level-number []
   (-> [:scene]
       get-state
@@ -83,9 +121,6 @@
       (clojure.string/split "-")
       last
       js/parseInt))
-
-(defn get-current-layers []
-  (-> (get-scene-layer) :deps))
 
 (defn sprite-info [id]
   (let [{:keys [type properties]} (-> @game :sprites (get id))]
@@ -114,4 +149,5 @@
                   (update-vals items #(merge % {:layer ly-name :position [x y]})))))
          (map #(get % [x y]))
          (filter map?)
-         (filter :visible))))
+         (filter :visible)
+         (filter (complement :ignore)))))
