@@ -135,7 +135,7 @@
   '((defn forward [] (<! (juliaworld.hero/forward)))
     (defn turn-right [] (<! (juliaworld.hero/turn-right)))
     (defn turn-left [] (<! (juliaworld.hero/turn-left)))
-	  (defn check [] (juliaworld.hero/check))
+    (defn check [] (juliaworld.hero/check))
 
 	(defn repeatedly 
 	 ([n f]
@@ -148,11 +148,17 @@
 	     @r)))
 	))
 
+(def mydefs 
+  '((def rep repeatedly)
+	(def fw forward)
+	(def tr turn-right)
+	(def tl turn-left)))
+
 (defmacro code [& forms]
   (let [fns (concat myfns (filter #(= 'defn (first %)) forms))
         fnames (set (apply extract-defn-names fns))
         non-fns (filter #(not= 'defn (first %)) forms)
-        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/reload-scene)) non-fns)
+        non-fns (concat '((juliaworld.helpers/save-editor-contents) (juliaworld.scene/reload-scene)) mydefs non-fns)
         updated-fns (mapv (partial update-defn fnames) fns)]
     (myprn `(do ~(cons 'go
                        (into
