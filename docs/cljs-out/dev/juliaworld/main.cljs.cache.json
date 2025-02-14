@@ -1,0 +1,1 @@
+["^ ","~:rename-macros",["^ "],"~:renames",["^ "],"~:use-macros",["^ "],"~:excludes",["~#set",[]],"~:name","~$juliaworld.main","~:imports",null,"~:requires",["^ ","~$pixi","^9","~$sc","~$juliaworld.scene","^;","^;"],"~:cljs.spec/speced-vars",[],"~:uses",null,"~:defs",["^ "],"~:cljs.spec/registry-ref",[],"~:require-macros",null,"~:doc",null,"~:as-aliases",["^ "]]
